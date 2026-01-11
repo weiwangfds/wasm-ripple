@@ -1,0 +1,39 @@
+[package]
+name = "wasm-mq"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+# console_error_panic_hook = "0.1" # Removed for size optimization
+
+# Removed serde_json and serde-wasm-bindgen for manual optimized handling
+# Removed uuid to use browser native crypto.randomUUID
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+    "BroadcastChannel",
+    "MessageEvent",
+    "console",
+    "Performance",
+    "Window",
+    "WorkerGlobalScope",
+    "Crypto", 
+]
+
+[profile.release]
+lto = true
+opt-level = "z"
+strip = true
+codegen-units = 1
+panic = "abort"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-Oz", "--enable-bulk-memory", "--enable-nontrapping-float-to-int"]
+

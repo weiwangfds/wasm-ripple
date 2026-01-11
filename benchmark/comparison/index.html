@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASM-MQ vs JS Libraries Benchmark</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .card { border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; background: #f9f9f9; }
+        .result-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .result-table th, .result-table td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+        .result-table th { background-color: #f2f2f2; }
+        button { background: #0070f3; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 1em; margin-right: 10px; }
+        button:hover { background: #0051a2; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #logs { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 8px; font-family: monospace; height: 300px; overflow-y: auto; white-space: pre-wrap; margin-top: 20px; }
+        .highlight { color: #0070f3; font-weight: bold; }
+    </style>
+    <!-- Load Comparison Libraries via CDN -->
+    <script src="https://unpkg.com/mitt/dist/mitt.umd.js"></script>
+    <script src="https://unpkg.com/pubsub-js"></script>
+    <script src="https://unpkg.com/rxjs@7.8.1/dist/bundles/rxjs.umd.min.js"></script>
+</head>
+<body>
+    <h1>WASM-MQ vs JS Libraries Benchmark</h1>
+    
+    <div class="card">
+        <h3>Benchmark Suite</h3>
+        <p>Comparing <strong>wasm-mq</strong> against <strong>mitt</strong>, <strong>pubsub-js</strong>, and <strong>rxjs</strong>.</p>
+        <p>Test Scenario: <strong>1,000,000</strong> sync messages (Single Topic, Single Subscriber)</p>
+        <button id="runBtn" onclick="runBenchmarks()">Run All Benchmarks</button>
+    </div>
+
+    <div id="results">
+        <table class="result-table">
+            <thead>
+                <tr>
+                    <th>Library</th>
+                    <th>Ops/Sec</th>
+                    <th>Total Time (ms)</th>
+                    <th>Memory Impact (Estimate)</th>
+                </tr>
+            </thead>
+            <tbody id="resultsBody">
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Logs</h3>
+    <div id="logs"></div>
+
+    <script type="module">
+        import init, { MessageQueue } from '../../pkg/wasm_mq.js';
+
+        const ITERATIONS = 1000000;
+        const PAYLOAD = { data: 'benchmark', id: 123 };
+        
+        const logDiv = document.getElementById('logs');
+        const resultsBody = document.getElementById('resultsBody');
+        const runBtn = document.getElementById('runBtn');
+
+        function log(msg) {
+            console.log(msg);
+            logDiv.textContent += msg + '\n';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function addResult(name, ops, time, note = '-') {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${name}</strong></td>
+                <td class="highlight">${typeof ops === 'number' ? ops.toLocaleString(undefined, {maximumFractionDigits: 0}) : ops}</td>
+                <td>${typeof time === 'number' ? time.toFixed(2) : time}</td>
+                <td>${note}</td>
+            `;
+            resultsBody.appendChild(row);
+        }
+
+        // --- MEMORY BENCHMARKS ---
+
+        async function measureMemory(name, runFn) {
+            if (!performance.memory) {
+                log('Warning: performance.memory not available. Skipping memory test.');
+                return { used: 'N/A', jitter: 'N/A' };
+            }
+
+            log(`Starting Memory Test for ${name}...`);
+            
+            const startHeap = performance.memory.usedJSHeapSize;
+            let peakHeap = startHeap;
+            let minHeap = startHeap;
+            
+            // Run continuously for 2 seconds
+            const duration = 2000;
+            const startTime = performance.now();
+            
+            // Sample interval
+            let samples = [];
+            
+            while (performance.now() - startTime < duration) {
+                runFn(); // Execute one batch or iteration
+                
+                const currentHeap = performance.memory.usedJSHeapSize;
+                samples.push(currentHeap);
+                if (currentHeap > peakHeap) peakHeap = currentHeap;
+                if (currentHeap < minHeap) minHeap = currentHeap;
+                
+                // Yield to allow GC
+                if (samples.length % 100 === 0) await new Promise(r => setTimeout(r, 0));
+            }
+
+            const endHeap = performance.memory.usedJSHeapSize;
+            
+            // Calculate jitter (standard deviation of samples)
+            const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
+            const variance = samples.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / samples.length;
+            const stdDev = Math.sqrt(variance);
+
+            const usedMB = (peakHeap - minHeap) / 1024 / 1024;
+            const jitterMB = stdDev / 1024 / 1024;
+            
+            return { 
+                used: `${usedMB.toFixed(2)} MB range`,
+                jitter: `±${jitterMB.toFixed(2)} MB`
+            };
+        }
+
+        // --- BATCH BENCHMARKS ---
+
+        function runWasmMqBatch(topic) {
+            log(`Starting WASM-MQ BATCH benchmark (${ITERATIONS} ops)...`);
+            
+            // Prepare batches
+            const BATCH_SIZE = 1000;
+            const BATCH_COUNT = ITERATIONS / BATCH_SIZE;
+            const batch = new Array(BATCH_SIZE).fill(PAYLOAD);
+
+            const start = performance.now();
+            
+            for(let i=0; i<BATCH_COUNT; i++) {
+                topic.publishBatch(batch);
+            }
+            
+            const end = performance.now();
+            return { ops: (ITERATIONS / (end - start)) * 1000, duration: end - start };
+        }
+
+        function runMittBatch(emitter) {
+            log(`Starting Mitt BATCH benchmark (${ITERATIONS} ops)...`);
+            
+            const BATCH_SIZE = 1000;
+            const BATCH_COUNT = ITERATIONS / BATCH_SIZE;
+            const batch = new Array(BATCH_SIZE).fill(PAYLOAD);
+
+            const start = performance.now();
+            for(let i=0; i<BATCH_COUNT; i++) {
+                // Mitt doesn't have batch, must loop
+                for(let j=0; j<BATCH_SIZE; j++) {
+                    emitter.emit('bench-batch', batch[j]);
+                }
+            }
+            const end = performance.now();
+            return { ops: (ITERATIONS / (end - start)) * 1000, duration: end - start };
+        }
+
+        function runPubSubBatch() {
+             log(`Starting PubSubJS BATCH benchmark (${ITERATIONS} ops)...`);
+            
+            const BATCH_SIZE = 1000;
+            const BATCH_COUNT = ITERATIONS / BATCH_SIZE;
+            const batch = new Array(BATCH_SIZE).fill(PAYLOAD);
+            
+            // Setup subscriber
+            const token = PubSub.subscribe('bench-batch', () => {});
+
+            const start = performance.now();
+            for(let i=0; i<BATCH_COUNT; i++) {
+                for(let j=0; j<BATCH_SIZE; j++) {
+                    PubSub.publishSync('bench-batch', batch[j]);
+                }
+            }
+            const end = performance.now();
+            
+            PubSub.unsubscribe(token);
+            return { ops: (ITERATIONS / (end - start)) * 1000, duration: end - start };
+        }
+        
+        function runRxJSBatch() {
+            log(`Starting RxJS BATCH benchmark (${ITERATIONS} ops)...`);
+            const { Subject } = rxjs;
+            const subject = new Subject();
+            const sub = subject.subscribe(() => {});
+            
+            const BATCH_SIZE = 1000;
+            const BATCH_COUNT = ITERATIONS / BATCH_SIZE;
+            const batch = new Array(BATCH_SIZE).fill(PAYLOAD);
+
+            const start = performance.now();
+            for(let i=0; i<BATCH_COUNT; i++) {
+                // RxJS from array? Or just loop next()
+                for(let j=0; j<BATCH_SIZE; j++) {
+                    subject.next(batch[j]);
+                }
+            }
+            const end = performance.now();
+            
+            sub.unsubscribe();
+            return { ops: (ITERATIONS / (end - start)) * 1000, duration: end - start };
+        }
+
+
+        async function runWasmMq() {
+            log('Initializing WASM-MQ...');
+            await init();
+            const mq = new MessageQueue();
+            const topic = mq.topic('bench');
+            
+            // Warmup
+            topic.subscribe(() => {});
+            topic.publish(PAYLOAD);
+
+            let received = 0;
+            const subId = topic.subscribe(() => received++);
+
+            log(`Starting WASM-MQ benchmark (${ITERATIONS} ops)...`);
+            const start = performance.now();
+            
+            // Use ID-based hot path internally wrapped by Topic
+            // Or use publishBatch for fairness comparison if others support it (they don't usually)
+            // We use standard publish loop
+            for(let i=0; i<ITERATIONS; i++) {
+                topic.publish(PAYLOAD);
+            }
+            
+            const end = performance.now();
+            const duration = end - start;
+            const ops = (ITERATIONS / duration) * 1000;
+
+            topic.unsubscribe(subId);
+            
+            // BATCH TEST
+            const batchTopic = mq.topic('bench-batch');
+            batchTopic.subscribe(() => {});
+            
+            await new Promise(r => setTimeout(r, 200));
+            const batchRes = runWasmMqBatch(batchTopic);
+
+            mq.close();
+            
+            return { sync: { ops, duration }, batch: batchRes };
+        }
+        
+        async function runWasmMqMemory() {
+            log('Initializing WASM-MQ Memory Test...');
+            // Re-init for isolation
+            // Note: in real app we reuse, but here we want clean state
+            const mq = new MessageQueue();
+            const topic = mq.topic('mem-bench');
+            topic.subscribe(() => {});
+            
+            const batch = new Array(100).fill(PAYLOAD);
+            
+            const res = await measureMemory('wasm-mq', () => {
+                topic.publishBatch(batch);
+            });
+            
+            mq.close();
+            return res;
+        }
+        
+        function runMitt() {
+            log(`Starting Mitt benchmark (${ITERATIONS} ops)...`);
+            const emitter = mitt();
+            let received = 0;
+            
+            emitter.on('bench', () => received++);
+            emitter.on('bench-batch', () => {});
+
+            const start = performance.now();
+            for(let i=0; i<ITERATIONS; i++) {
+                emitter.emit('bench', PAYLOAD);
+            }
+            const end = performance.now();
+            
+            const batchRes = runMittBatch(emitter);
+            
+            return { sync: { ops: (ITERATIONS / (end - start)) * 1000, duration: end - start }, batch: batchRes };
+        }
+
+        function runPubSub() {
+            log(`Starting PubSubJS benchmark (${ITERATIONS} ops)...`);
+            let received = 0;
+            const token = PubSub.subscribe('bench', () => received++);
+
+            const start = performance.now();
+            for(let i=0; i<ITERATIONS; i++) {
+                PubSub.publishSync('bench', PAYLOAD);
+            }
+            const end = performance.now();
+            
+            PubSub.unsubscribe(token);
+            
+            const batchRes = runPubSubBatch();
+
+            return { sync: { ops: (ITERATIONS / (end - start)) * 1000, duration: end - start }, batch: batchRes };
+        }
+
+        function runRxJS() {
+            log(`Starting RxJS benchmark (${ITERATIONS} ops)...`);
+            const { Subject } = rxjs;
+            const subject = new Subject();
+            let received = 0;
+            
+            const sub = subject.subscribe(() => received++);
+
+            const start = performance.now();
+            for(let i=0; i<ITERATIONS; i++) {
+                subject.next(PAYLOAD);
+            }
+            const end = performance.now();
+            
+            sub.unsubscribe();
+            
+            const batchRes = runRxJSBatch();
+            
+            return { sync: { ops: (ITERATIONS / (end - start)) * 1000, duration: end - start }, batch: batchRes };
+        }
+
+        async function runMittMemory() {
+            const emitter = mitt();
+            emitter.on('mem-bench', () => {});
+            const batch = new Array(100).fill(PAYLOAD);
+            
+            return await measureMemory('mitt', () => {
+                 for(let j=0; j<100; j++) emitter.emit('mem-bench', batch[j]);
+            });
+        }
+        
+        async function runPubSubMemory() {
+            const token = PubSub.subscribe('mem-bench', () => {});
+            const batch = new Array(100).fill(PAYLOAD);
+            
+            const res = await measureMemory('pubsub-js', () => {
+                 for(let j=0; j<100; j++) PubSub.publishSync('mem-bench', batch[j]);
+            });
+            PubSub.unsubscribe(token);
+            return res;
+        }
+
+        async function runRxJSMemory() {
+            const { Subject } = rxjs;
+            const subject = new Subject();
+            const sub = subject.subscribe(() => {});
+            const batch = new Array(100).fill(PAYLOAD);
+            
+            const res = await measureMemory('rxjs', () => {
+                 for(let j=0; j<100; j++) subject.next(batch[j]);
+            });
+            sub.unsubscribe();
+            return res;
+        }
+
+        window.runBenchmarks = async () => {
+            runBtn.disabled = true;
+            resultsBody.innerHTML = '';
+            logDiv.textContent = '';
+
+            try {
+                // 1. WASM-MQ
+                const wasmRes = await runWasmMq();
+                addResult('wasm-mq (Sync)', wasmRes.sync.ops, wasmRes.sync.duration, 'Zero-alloc (Rust)');
+                addResult('wasm-mq (Batch)', wasmRes.batch.ops, wasmRes.batch.duration, 'Optimized Batch (1k/chunk)');
+                
+                await new Promise(r => setTimeout(r, 500));
+                const wasmMem = await runWasmMqMemory();
+                addResult('wasm-mq (Memory)', '-', '-', `Used: ${wasmMem.used}, Jitter: ${wasmMem.jitter}`);
+
+                // Wait for GC
+                await new Promise(r => setTimeout(r, 500));
+
+                // 2. Mitt
+                const mittRes = runMitt();
+                addResult('mitt (Sync)', mittRes.sync.ops, mittRes.sync.duration, 'High JS GC pressure');
+                addResult('mitt (Batch)', mittRes.batch.ops, mittRes.batch.duration, 'Loop simulation');
+                
+                await new Promise(r => setTimeout(r, 500));
+                const mittMem = await runMittMemory();
+                addResult('mitt (Memory)', '-', '-', `Used: ${mittMem.used}, Jitter: ${mittMem.jitter}`);
+
+                await new Promise(r => setTimeout(r, 500));
+
+                // 3. PubSubJS
+                const pubsubRes = runPubSub();
+                addResult('pubsub-js (Sync)', pubsubRes.sync.ops, pubsubRes.sync.duration, 'String matching overhead');
+                addResult('pubsub-js (Batch)', pubsubRes.batch.ops, pubsubRes.batch.duration, 'Loop simulation');
+                
+                await new Promise(r => setTimeout(r, 500));
+                const pubsubMem = await runPubSubMemory();
+                addResult('pubsub-js (Memory)', '-', '-', `Used: ${pubsubMem.used}, Jitter: ${pubsubMem.jitter}`);
+
+                await new Promise(r => setTimeout(r, 500));
+
+                // 4. RxJS
+                const rxjsRes = runRxJS();
+                addResult('rxjs (Sync)', rxjsRes.sync.ops, rxjsRes.sync.duration, 'Observable overhead');
+                addResult('rxjs (Batch)', rxjsRes.batch.ops, rxjsRes.batch.duration, 'Loop simulation');
+                
+                await new Promise(r => setTimeout(r, 500));
+                const rxjsMem = await runRxJSMemory();
+                addResult('rxjs (Memory)', '-', '-', `Used: ${rxjsMem.used}, Jitter: ${rxjsMem.jitter}`);
+
+                log('All benchmarks completed!');
+            } catch (e) {
+                log(`Error: ${e.message}`);
+                console.error(e);
+            } finally {
+                runBtn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>

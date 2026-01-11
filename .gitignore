@@ -1,0 +1,11 @@
+/target
+/.DS_Store
+/*.wasm
+.DS_Store
+*.swp
+*.swo
+*~
+.claude/
+.playwright-mcp/
+/node_modules/
+/pkg/
