@@ -350,3 +350,22 @@ if (fs.existsSync(dtsFile)) {
 } else {
     console.error('wasm_ripple.d.ts not found');
 }
+
+// Update pkg/package.json
+const pkgJsonFile = path.join(pkgDir, 'package.json');
+const rootPkgJsonFile = path.join(__dirname, '../package.json');
+
+if (fs.existsSync(pkgJsonFile) && fs.existsSync(rootPkgJsonFile)) {
+    const pkgJson = JSON.parse(fs.readFileSync(pkgJsonFile, 'utf8'));
+    const rootPkgJson = JSON.parse(fs.readFileSync(rootPkgJsonFile, 'utf8'));
+
+    pkgJson.name = rootPkgJson.name;
+    pkgJson.version = rootPkgJson.version;
+    // Optional: sync other fields
+    // pkgJson.description = rootPkgJson.description || pkgJson.description;
+    
+    fs.writeFileSync(pkgJsonFile, JSON.stringify(pkgJson, null, 2));
+    console.log(`Updated pkg/package.json: name=${pkgJson.name}, version=${pkgJson.version}`);
+} else {
+    console.error('Could not find package.json files for sync');
+}
