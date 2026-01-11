@@ -35,7 +35,7 @@
 
 ```javascript
 // 实现示例
-const DB_KEY = 'wasm-mq-messages';
+const DB_KEY = 'wasm-ripple-messages';
 
 export function save_messages(messages) {
     const data = JSON.stringify(messages);
@@ -68,7 +68,7 @@ export function clear_messages() {
 - ⚠️ 主要用于 HTTP 缓存
 
 ```javascript
-const CACHE_NAME = 'wasm-mq-cache';
+const CACHE_NAME = 'wasm-ripple-cache';
 
 export async function save_message(msg) {
     const cache = await caches.open(CACHE_NAME);

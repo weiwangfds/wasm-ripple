@@ -300,15 +300,15 @@ if (fs.existsSync(jsFile)) {
         if (exportIdx !== -1) {
             content = content.slice(0, exportIdx) + streamJs + '\n' + topicJs + '\n' + content.slice(exportIdx);
             fs.writeFileSync(jsFile, content);
-            console.log('Updated wasm_mq.js with Stream and Topic class');
+            console.log('Updated wasm_ripple.js with Stream and Topic class');
         } else {
-            console.error('Could not find export statement in wasm_mq.js');
+            console.error('Could not find export statement in wasm_ripple.js');
         }
     } else {
-        console.log('Topic class already exists in wasm_mq.js');
+        console.log('Topic class already exists in wasm_ripple.js');
     }
 } else {
-    console.error('wasm_mq.js not found');
+    console.error('wasm_ripple.js not found');
 }
 
 // Process DTS file
@@ -336,17 +336,17 @@ if (fs.existsSync(dtsFile)) {
                     const insertPos = subIdx + subMethod.length;
                     content = content.slice(0, insertPos) + '\n' + topicMethodDts + content.slice(insertPos);
                     fs.writeFileSync(dtsFile, content);
-                    console.log('Updated wasm_mq.d.ts with Topic definitions');
+                    console.log('Updated wasm_ripple.d.ts with Topic definitions');
                 } else {
-                    console.error('Could not find subscribe method in wasm_mq.d.ts');
+                    console.error('Could not find subscribe method in wasm_ripple.d.ts');
                 }
             }
         } else {
-            console.error('Could not find MessageQueue class in wasm_mq.d.ts');
+            console.error('Could not find MessageQueue class in wasm_ripple.d.ts');
         }
     } else {
-        console.log('Topic class already exists in wasm_mq.d.ts');
+        console.log('Topic class already exists in wasm_ripple.d.ts');
     }
 } else {
-    console.error('wasm_mq.d.ts not found');
+    console.error('wasm_ripple.d.ts not found');
 }
