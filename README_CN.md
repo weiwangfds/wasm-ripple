@@ -18,26 +18,26 @@
 - **🎯 轻量级** - gzip 压缩后约 40KB 的 WebAssembly 模块
 
 ## 📦 安装
-
-```bash
-npm install wasm-mq
-```
-
-或直接从 `pkg` 目录使用：
-
-```html
-<script type="module">
-  import init, { MessageQueue } from './pkg/wasm_mq.js';
-
-  await init();
-  const mq = new MessageQueue('my-channel');
-</script>
-```
-
-## 🚀 快速开始
-
-```javascript
-import init, { MessageQueue } from 'wasm-mq';
+ 
+ ```bash
+ npm install wasm-ripple
+ ```
+ 
+ 或直接从 `pkg` 目录使用：
+ 
+ ```html
+ <script type="module">
+   import init, { MessageQueue } from './pkg/wasm_ripple.js';
+ 
+   await init();
+   const mq = new MessageQueue('my-channel');
+ </script>
+ ```
+ 
+ ## 🚀 快速开始
+ 
+ ```javascript
+ import init, { MessageQueue } from 'wasm-ripple';
 
 // 初始化 WASM 模块
 await init();

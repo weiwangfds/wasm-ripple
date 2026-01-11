@@ -2,6 +2,10 @@
 name = "wasm-ripple"
 version = "0.1.0"
 edition = "2021"
+description = "A high-performance, memory-safe message queue library compiled to WebAssembly"
+repository = "https://github.com/weiwangfds/wasm-ripple"
+license = "MIT"
+authors = ["Wei Wang <weiwangfds@163.com>"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

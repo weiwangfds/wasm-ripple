@@ -20,14 +20,14 @@ A high-performance, memory-safe message queue library compiled to WebAssembly, d
 ## 📦 Installation
 
 ```bash
-npm install wasm-mq
+npm install wasm-ripple
 ```
 
 Or use directly from the `pkg` directory:
 
 ```html
 <script type="module">
-  import init, { MessageQueue } from './pkg/wasm_mq.js';
+  import init, { MessageQueue } from './pkg/wasm_ripple.js';
 
   await init();
   const mq = new MessageQueue('my-channel');
@@ -37,7 +37,7 @@ Or use directly from the `pkg` directory:
 ## 🚀 Quick Start
 
 ```javascript
-import init, { MessageQueue } from 'wasm-mq';
+import init, { MessageQueue } from 'wasm-ripple';
 
 // Initialize the WASM module
 await init();
