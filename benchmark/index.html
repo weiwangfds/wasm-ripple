@@ -30,7 +30,7 @@
 
     <script type="module">
         // Dynamic import to bust cache
-        const { default: init, MessageQueue } = await import('../pkg/wasm_mq.js?v=' + Date.now());
+        const { default: init, MessageQueue } = await import('../pkg/wasm_ripple.js?v=' + Date.now());
 
         const logDiv = document.getElementById('logs');
         const resultsDiv = document.getElementById('results');

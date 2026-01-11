@@ -130,7 +130,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasm-mq"
+name = "wasm-ripple"
 version = "0.1.0"
 dependencies = [
  "js-sys",

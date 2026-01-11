@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 const pkgDir = path.join(__dirname, '../pkg');
-const jsFile = path.join(pkgDir, 'wasm_mq.js');
-const dtsFile = path.join(pkgDir, 'wasm_mq.d.ts');
+const jsFile = path.join(pkgDir, 'wasm_ripple.js');
+const dtsFile = path.join(pkgDir, 'wasm_ripple.d.ts');
 
 const streamJs = `
 /**

@@ -1,4 +1,5 @@
-# Wasm-MQ
+# Wasm-Ripple
+
 
 [![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
 [![WebAssembly](https://img.shields.io/badge/WebAssembly-2024%20Stable-blue?style=for-the-badge&logo=webassembly)](https://webassembly.org/)

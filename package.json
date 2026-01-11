@@ -1,5 +1,5 @@
 {
-  "name": "wasm-mq-demo",
+  "name": "wasm-ripple",
   "version": "0.1.0",
   "scripts": {
     "build": "wasm-pack build --target web && node scripts/post-build.js",
