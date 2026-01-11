@@ -1,6 +1,6 @@
 {
   "name": "@weiwangfds/wasm-ripple",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "scripts": {
     "build": "wasm-pack build --target web && node scripts/post-build.js",
     "serve": "python3 -m http.server 8000"
