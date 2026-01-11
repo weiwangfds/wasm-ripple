@@ -20,7 +20,7 @@ A high-performance, memory-safe message queue library compiled to WebAssembly, d
 ## 📦 Installation
 
 ```bash
-npm install wasm-ripple
+npm install @weiwangfds/wasm-ripple
 ```
 
 Or use directly from the `pkg` directory:
@@ -37,7 +37,7 @@ Or use directly from the `pkg` directory:
 ## 🚀 Quick Start
 
 ```javascript
-import init, { MessageQueue } from 'wasm-ripple';
+import init, { MessageQueue } from '@weiwangfds/wasm-ripple';
 
 // Initialize the WASM module
 await init();

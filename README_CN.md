@@ -20,7 +20,7 @@
 ## 📦 安装
  
  ```bash
- npm install wasm-ripple
+ npm install @weiwangfds/wasm-ripple
  ```
  
  或直接从 `pkg` 目录使用：
@@ -37,7 +37,7 @@
  ## 🚀 快速开始
  
  ```javascript
- import init, { MessageQueue } from 'wasm-ripple';
+ import init, { MessageQueue } from '@weiwangfds/wasm-ripple';
 
 // 初始化 WASM 模块
 await init();
